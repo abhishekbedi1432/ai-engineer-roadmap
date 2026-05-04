@@ -18,5 +18,15 @@ export default async function LevelPage({ params }: { params: Promise<{ id: stri
   const { id } = await params;
   const level = getLevelById(Number(id));
   if (!level) notFound();
-  return <LevelPageClient level={level} />;
+
+  const prev = levels.find((l) => l.id === level.id - 1);
+  const next = levels.find((l) => l.id === level.id + 1);
+
+  return (
+    <LevelPageClient
+      level={level}
+      prevLevel={prev ? { id: prev.id, title: prev.title } : null}
+      nextLevel={next ? { id: next.id, title: next.title } : null}
+    />
+  );
 }

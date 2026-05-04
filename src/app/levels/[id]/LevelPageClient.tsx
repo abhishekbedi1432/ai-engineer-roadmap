@@ -4,6 +4,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { LevelContent } from "@/types/content";
 import { Tabs } from "@/components/ui/Tabs";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { LessonView } from "@/components/level/LessonView";
 import { QuizView } from "@/components/level/QuizView";
 import { ScoreCard } from "@/components/level/ScoreCard";
@@ -11,7 +12,6 @@ import { NotesEditor } from "@/components/notes/NotesEditor";
 import { useProgress } from "@/lib/hooks/useProgress";
 import { Badge } from "@/components/ui/Badge";
 import Link from "next/link";
-import { levels } from "@/content/levels";
 
 const LabView = dynamic(() => import("@/components/editor/LabView").then((m) => m.LabView), {
   ssr: false,
@@ -22,11 +22,18 @@ const LabView = dynamic(() => import("@/components/editor/LabView").then((m) => 
   ),
 });
 
-interface LevelPageClientProps {
-  level: LevelContent;
+interface LevelNav {
+  id: number;
+  title: string;
 }
 
-export function LevelPageClient({ level }: LevelPageClientProps) {
+interface LevelPageClientProps {
+  level: LevelContent;
+  prevLevel: LevelNav | null;
+  nextLevel: LevelNav | null;
+}
+
+export function LevelPageClient({ level, prevLevel, nextLevel }: LevelPageClientProps) {
   const { progress, saveQuizScore, saveLabScore } = useProgress(level.id);
   const [activeTab, setActiveTab] = useState("lesson");
 
@@ -36,9 +43,6 @@ export function LevelPageClient({ level }: LevelPageClientProps) {
     { id: "quiz", label: "Quiz" },
     { id: "notes", label: "Notes" },
   ];
-
-  const prevLevel = levels.find((l) => l.id === level.id - 1);
-  const nextLevel = levels.find((l) => l.id === level.id + 1);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
@@ -54,20 +58,28 @@ export function LevelPageClient({ level }: LevelPageClientProps) {
       <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
         {(tab) => (
           <>
-            {tab === "lesson" && <LessonView content={level.lesson} />}
+            {tab === "lesson" && (
+              <ErrorBoundary>
+                <LessonView content={level.lesson} />
+              </ErrorBoundary>
+            )}
             {tab === "lab" && level.lab && (
-              <LabView
-                lab={level.lab}
-                onSubmitScore={saveLabScore}
-                savedCode={progress.labCode || undefined}
-              />
+              <ErrorBoundary>
+                <LabView
+                  lab={level.lab}
+                  onSubmitScore={saveLabScore}
+                  savedCode={progress.labCode || undefined}
+                />
+              </ErrorBoundary>
             )}
             {tab === "quiz" && (
-              <QuizView
-                questions={level.quiz}
-                onComplete={saveQuizScore}
-                previousAnswers={progress.quizAnswers.length > 0 ? progress.quizAnswers : undefined}
-              />
+              <ErrorBoundary>
+                <QuizView
+                  questions={level.quiz}
+                  onComplete={saveQuizScore}
+                  previousAnswers={progress.quizAnswers.length > 0 ? progress.quizAnswers : undefined}
+                />
+              </ErrorBoundary>
             )}
             {tab === "notes" && <NotesEditor levelId={level.id} />}
           </>
