@@ -36,7 +36,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 - **In-browser Python** — NumPy, Pandas, scikit-learn run via Pyodide (WebAssembly). No Python install needed.
 - **Monaco Editor** — VS Code editing experience with syntax highlighting.
-- **Progress tracking** — Scores persist in localStorage (guest) or Firestore (signed in).
+- **Progress tracking** — Scores persist in localStorage.
 - **Notes vault** — Per-level notes with auto-save.
 - **8-week study plan** — Suggested pace for the full roadmap.
 
@@ -45,35 +45,7 @@ Open [http://localhost:3000](http://localhost:3000).
 - [Next.js 15](https://nextjs.org/) (App Router, TypeScript)
 - [Pyodide](https://pyodide.org/) (Python in WebAssembly, loaded via Web Worker)
 - [Monaco Editor](https://microsoft.github.io/monaco-editor/) (`@monaco-editor/react`)
-- [Firebase](https://firebase.google.com/) (Auth + Firestore, optional)
 - [Tailwind CSS v4](https://tailwindcss.com/)
-
-## Firebase Setup (Optional)
-
-Firebase enables Google sign-in and cross-device progress sync. Without it, the portal works fully in guest mode (localStorage).
-
-1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
-2. Enable **Authentication** > Google sign-in
-3. Create a **Firestore** database
-4. Copy your config values into `.env.local`:
-
-```bash
-cp .env.example .env.local
-# Fill in your Firebase config values
-```
-
-5. Deploy Firestore security rules:
-
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{uid}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-  }
-}
-```
 
 ## Project Structure
 
@@ -91,7 +63,6 @@ src/
     ui/                   # Button, Card, Badge, Tabs, ProgressBar
   content/levels/         # Level data (lesson markdown, quiz, lab code)
   lib/
-    firebase/             # Auth + Firestore helpers
     hooks/                # useProgress, useNotes
     utils/                # Scoring, cn (classnames)
   providers/              # AuthProvider

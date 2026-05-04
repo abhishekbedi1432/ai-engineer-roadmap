@@ -1,21 +1,28 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/providers/AuthProvider";
 import { LevelProgress } from "@/types/user";
 import { calculateTotalScore, calculateQuizOnlyScore, isPassed } from "@/lib/utils/scoring";
-import * as firestoreOps from "@/lib/firebase/firestore";
+import { levels } from "@/content/levels";
 
 const STORAGE_KEY = (levelId: number) => `roadmap_progress_${levelId}`;
 
 function getLocalProgress(levelId: number): LevelProgress | null {
   if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem(STORAGE_KEY(levelId));
-  return raw ? JSON.parse(raw) : null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY(levelId));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
 }
 
 function setLocalProgress(progress: LevelProgress): void {
-  localStorage.setItem(STORAGE_KEY(progress.levelId), JSON.stringify(progress));
+  try {
+    localStorage.setItem(STORAGE_KEY(progress.levelId), JSON.stringify(progress));
+  } catch {
+    // localStorage full or unavailable
+  }
 }
 
 function emptyProgress(levelId: number): LevelProgress {
@@ -33,26 +40,16 @@ function emptyProgress(levelId: number): LevelProgress {
 }
 
 export function useProgress(levelId: number) {
-  const { user } = useAuth();
   const [progress, setProgress] = useState<LevelProgress>(emptyProgress(levelId));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      if (user) {
-        const remote = await firestoreOps.getProgress(user.uid, levelId);
-        setProgress(remote ?? emptyProgress(levelId));
-      } else {
-        setProgress(getLocalProgress(levelId) ?? emptyProgress(levelId));
-      }
-      setLoading(false);
-    }
-    load();
-  }, [user, levelId]);
+    setProgress(getLocalProgress(levelId) ?? emptyProgress(levelId));
+    setLoading(false);
+  }, [levelId]);
 
   const saveQuizScore = useCallback(
-    async (score: number, answers: number[]) => {
+    (score: number, answers: number[]) => {
       const updated: LevelProgress = {
         ...progress,
         quizScore: score,
@@ -66,17 +63,13 @@ export function useProgress(levelId: number) {
       updated.passed = isPassed(updated.totalScore);
       if (updated.passed) updated.completedAt = new Date();
       setProgress(updated);
-      if (user) {
-        await firestoreOps.saveProgress(user.uid, updated);
-      } else {
-        setLocalProgress(updated);
-      }
+      setLocalProgress(updated);
     },
-    [progress, user]
+    [progress]
   );
 
   const saveLabScore = useCallback(
-    async (score: number, code: string) => {
+    (score: number, code: string) => {
       const updated: LevelProgress = {
         ...progress,
         labScore: score,
@@ -88,41 +81,29 @@ export function useProgress(levelId: number) {
       updated.passed = isPassed(updated.totalScore);
       if (updated.passed) updated.completedAt = new Date();
       setProgress(updated);
-      if (user) {
-        await firestoreOps.saveProgress(user.uid, updated);
-      } else {
-        setLocalProgress(updated);
-      }
+      setLocalProgress(updated);
     },
-    [progress, user]
+    [progress]
   );
 
   return { progress, loading, saveQuizScore, saveLabScore };
 }
 
 export function useAllProgress() {
-  const { user } = useAuth();
   const [progressMap, setProgressMap] = useState<Record<number, LevelProgress>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      const map: Record<number, LevelProgress> = {};
-      if (user) {
-        const all = await firestoreOps.getAllProgress(user.uid);
-        all.forEach((p) => { map[p.levelId] = p; });
-      } else if (typeof window !== "undefined") {
-        for (let i = 0; i <= 9; i++) {
-          const p = getLocalProgress(i);
-          if (p) map[i] = p;
-        }
+    const map: Record<number, LevelProgress> = {};
+    if (typeof window !== "undefined") {
+      for (const level of levels) {
+        const p = getLocalProgress(level.id);
+        if (p) map[level.id] = p;
       }
-      setProgressMap(map);
-      setLoading(false);
     }
-    load();
-  }, [user]);
+    setProgressMap(map);
+    setLoading(false);
+  }, []);
 
   return { progressMap, loading };
 }
